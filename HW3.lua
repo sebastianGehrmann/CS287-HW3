@@ -3,6 +3,8 @@ require("hdf5")
 require("nn")
 require("optim")
 require("xlua")
+require 'cutorch'
+require 'cunn'
 
 cmd = torch.CmdLine()
 
