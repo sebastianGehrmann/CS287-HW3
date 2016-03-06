@@ -293,8 +293,7 @@ function trainNN(model, criterion, X, y, vX, vy, tX, ts)
     			subpreds[row][class] = cpred
     		end
     	end
-    	subpreds:cuda()
-    	renormalized = nn.SoftMax():forward(subpreds)
+    	renormalized = nn.SoftMax():cuda():forward(subpreds)
     	val = string.format("%.2f", perplexity)
         l = string.format("%.4f", loss)
     	filename = opt.savefolder .. i .. "-" .. tostring(tX:size(2)+1) .. "-" .. val .. "-" .. l .. ".txt"
