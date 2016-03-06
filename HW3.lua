@@ -94,7 +94,7 @@ function MLE(X, y, vX, vy, vs, alpha, dwin, nclasses)
 	print("\nLikelihood table constructed")
 	--for every example take max likelihood / compute perplexity
 	--only test on blanks? Store table in between?
-	predictions = torch.DoubleTensor(vy:size(1), vs:size(2)):fill(0)
+	predictions = torch.DoubleTensor(vy:size(1), vs:size(2)):fill(0):cuda()
 	
 	print("Prediction Process:")
 	for row=1, vy:size(1) do
@@ -148,7 +148,7 @@ function wittenBell(X, y, vX, vy, vs, dwin, nclasses)
 	end
 	Fw  = wordprob(y)
 	print("Likelihood table constructed")
-	predictions = torch.DoubleTensor(vy:size(1), vs:size(2)):fill(0)
+	predictions = torch.DoubleTensor(vy:size(1), vs:size(2)):fill(0):cuda()
 	print("Prediction Process")
 	for row=1, 100 do--vy:size(1) do
 		xlua.progress(row, vy:size(1))
@@ -251,8 +251,8 @@ function trainNN(model, criterion, X, y, vX, vy, tX, ts)
       for t=1, X:size(1), opt.batchsize do
          xlua.progress(t, X:size(1))
 
-         local inputs = torch.Tensor(opt.batchsize, X:size(2))
-         local targets = torch.Tensor(opt.batchsize)
+         local inputs = torch.Tensor(opt.batchsize, X:size(2)):cuda()
+         local targets = torch.Tensor(opt.batchsize):cuda()
          local k = 1
          for i = t,math.min(t+opt.batchsize-1,X:size(1)) do
             -- load new sample
@@ -286,7 +286,7 @@ function trainNN(model, criterion, X, y, vX, vy, tX, ts)
 
       if opt.savePreds == 'true' then
     	preds = model:forward(tX)
-    	subpreds = torch.Tensor(preds:size(1), ts:size(2)):fill(0)
+    	subpreds = torch.Tensor(preds:size(1), ts:size(2)):fill(0):cuda()
     	for row=1, preds:size(1) do
     		for class=1, ts:size(2) do
     			cpred = preds[row][ts[row][class]]
@@ -312,16 +312,16 @@ function main()
 	nfeatures = f:read('nfeatures'):all():long()[1]
 	dwin = f:read('dwin'):all():long()[1]
 
-	tin = f:read('train_input'):all()
-	tout = f:read('train_output'):all():squeeze()
+	tin = f:read('train_input'):all():cuda()
+	tout = f:read('train_output'):all():squeeze():cuda()
 
-	vin = f:read('valid_blanks_input'):all()
-	vset = f:read('valid_blanks_set'):all()
-	vset = vset:narrow(2, 2, vset:size(2)-2)
-	vout = f:read('valid_output'):all():squeeze()
+	vin = f:read('valid_blanks_input'):all():cuda()
+	vset = f:read('valid_blanks_set'):all():cuda()
+	vset = vset:narrow(2, 2, vset:size(2)-2):cuda()
+	vout = f:read('valid_output'):all():squeeze():cuda()
 
-	testin = f:read('test_input'):all()
-	testout = f:read('test_set'):all()
+	testin = f:read('test_input'):all():cuda()
+	testout = f:read('test_set'):all():cuda()
 
 	if opt.dev == 'true' then
       print('Development mode')
