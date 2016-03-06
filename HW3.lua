@@ -278,11 +278,19 @@ function trainNN(model, criterion, X, y, vX, vy, tX, ts)
       end
       print("\nepoch " .. i .. ", loss: " .. losstotal*opt.batchsize/X:size(1))
 
+      yhat = model:forward(X)
+      loss, examples = criterion:forward(yhat,y)
+      perplexity = torch.exp(loss)
+
+      print(perplexity, "Perplexity on training set")
+      print(examples, "Number examples")
+
       yhat = model:forward(vX)
       loss, examples = criterion:forward(yhat,vy)
       perplexity = torch.exp(loss)
 
       print(perplexity, "Perplexity on validation set")
+      print(examples, "Number examples")
 
       if opt.savePreds == 'true' then
     	preds = model:forward(tX)
