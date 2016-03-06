@@ -230,7 +230,7 @@ function nnlm(X, y, vX, vy, vs, dwin, nclasses, tX, ts)
     -- print(torch.exp(loss))
     --print(mlp:forward(X))
     if opt.gpuid >= 0 then
-      model:cuda()
+      mlp:cuda()
       criterion:cuda()
     end
     model = trainNN(mlp, criterion, X, y, vX, vy, tX, ts)
