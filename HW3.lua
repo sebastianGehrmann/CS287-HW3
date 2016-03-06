@@ -11,6 +11,7 @@ cmd:option('-datafile', '', 'data file')
 cmd:option('-lm', 'mle', 'classifier to use')
 cmd:option('-dev', 'false', 'narrow training data for development')
 cmd:option('-savePreds', 'false', 'Save the predictions of testset')
+cmd:option('-gpuid', -1, 'set to >=0 for cuda')
 
 -- Hyperparameters
 cmd:option('-alpha', 0, 'laplace smoothing value')
@@ -227,6 +228,10 @@ function nnlm(X, y, vX, vy, vs, dwin, nclasses, tX, ts)
     -- loss, count = criterion:forward(mlp:forward(X), y)
     -- print(torch.exp(loss))
     --print(mlp:forward(X))
+    if opt.gpuid >= 0 then
+      model:cuda()
+      criterion:cuda()
+    end
     model = trainNN(mlp, criterion, X, y, vX, vy, tX, ts)
 
 end
@@ -322,6 +327,13 @@ function main()
       print('Narrowing the Training Data to 100 Samples')
       tin = tin:narrow(1, 1, 1000):clone()
       tout = tout:narrow(1, 1, 1000):clone()
+   end
+
+   if opt.gpuid >= 0 then
+      print('using CUDA on GPU ' .. opt.gpuid .. '...')
+      require 'cutorch'
+      require 'cunn'
+      cutorch.setDevice(opt.gpuid + 1)
    end
 
 	-- Train.
