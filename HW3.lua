@@ -3,8 +3,6 @@ require("hdf5")
 require("nn")
 require("optim")
 require("xlua")
-require 'cutorch'
-require 'cunn'
 
 cmd = torch.CmdLine()
 
@@ -310,6 +308,15 @@ function main()
 	-- Parse input params
 	opt = cmd:parse(arg)
 	local f = hdf5.open(opt.datafile, 'r')
+
+	if opt.gpuid >= 0 then
+	  print('using CUDA on GPU ' .. opt.gpuid .. '...')
+	  require 'cutorch'
+	  require 'cunn'
+	  cutorch.setDevice(opt.gpuid + 1)
+	end
+
+
 	nclasses = f:read('nclasses'):all():long()[1]
 	nfeatures = f:read('nfeatures'):all():long()[1]
 	dwin = f:read('dwin'):all():long()[1]
@@ -332,12 +339,6 @@ function main()
       tout = tout:narrow(1, 1, 1000):clone()
    end
 
-   if opt.gpuid >= 0 then
-      print('using CUDA on GPU ' .. opt.gpuid .. '...')
-      require 'cutorch'
-      require 'cunn'
-      cutorch.setDevice(opt.gpuid + 1)
-   end
 
 	-- Train.
 	if opt.lm == "mle" then
