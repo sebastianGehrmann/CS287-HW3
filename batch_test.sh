@@ -11,4 +11,4 @@
 #BATCH --mail-user=gehrmann@seas.harvard.edu
 #SBATCH -t 0-06:05
 
-th HW3.lua -gpuid 0 -datafile PTB1000-win-2.hdf5 -lm nn -savePreds true -dev true
+th HW3.lua -savefolder "/n/regal/rush_lab/sebastian/" -gpuid 0 -datafile PTB1000-win-2.hdf5 -lm nn -savePreds true -dev true

@@ -12,6 +12,7 @@ cmd:option('-lm', 'mle', 'classifier to use')
 cmd:option('-dev', 'false', 'narrow training data for development')
 cmd:option('-savePreds', 'false', 'Save the predictions of testset')
 cmd:option('-gpuid', -1, 'set to >=0 for cuda')
+cmd:option('-savefolder', 'predictions/','filename to autosave the checkpont to')
 
 -- Hyperparameters
 cmd:option('-alpha', 0, 'laplace smoothing value')
@@ -295,7 +296,7 @@ function trainNN(model, criterion, X, y, vX, vy, tX, ts)
     	renormalized = nn.SoftMax():forward(subpreds)
     	val = string.format("%.2f", perplexity)
         l = string.format("%.4f", loss)
-    	filename = "predictions/" .. i .. "-" .. tostring(tX:size(2)+1) .. "-" .. val .. "-" .. l .. ".txt"
+    	filename = opt.savefolder .. i .. "-" .. tostring(tX:size(2)+1) .. "-" .. val .. "-" .. l .. ".txt"
         torch.save(filename, renormalized, 'ascii')
     end
    end
