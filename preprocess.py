@@ -22,7 +22,11 @@ def construct_word2idx(wd):
 def transform_sent(sent, word2idx, dwin):
     tsent = [word2idx['<s>']] * dwin
     for s in sent.split():
-        tsent.append(word2idx[s])
+        try:
+            tsent.append(word2idx[s])
+        except:
+            tsent.append(word2idx['<unk>'])
+  
     tsent.append(word2idx['</s>'])
     return tsent
 
@@ -43,12 +47,11 @@ def transform_test_sent(sent, word2idx, dwin):
     #only store dwin last words
     if len(split) > dwin:
         split = split[-dwin:]
-    if len(split) < dwin:
-        for s in split:
+    for s in split:
+        try:
             tsent.append(word2idx[s])
-    else:
-        for s in split:
-            tsent.append(word2idx[s])
+        except:
+            tsent.append(word2idx['<unk>'])
     return tsent
 
 def convert_test(filename, word2idx, dwin):
@@ -57,12 +60,15 @@ def convert_test(filename, word2idx, dwin):
     with open(filename) as f:
         for i, line in enumerate(f):
             if (line[0] == "Q"):
-                sent = transform_sent(line[dwin:], word2idx, dwin)
+                sent = transform_sent(line[2:], word2idx, dwin)
+
                 lbl_set.append(sent)
             else:
                 sent = transform_test_sent(line[2:], word2idx, dwin)
                 features.append(sent)
-    return np.array(features, dtype=np.int32), np.array(lbl_set, dtype=np.int32)
+    features = np.array(features, dtype=np.int32)
+    lbl_set = np.array(lbl_set, dtype=np.int32)
+    return features, lbl_set
 
 def convert_valid_results(filename, word2idx, dwin):
     lbl = []
