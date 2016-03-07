@@ -167,7 +167,14 @@ function wittenBell(X, y, vX, vy, vs, dwin, nclasses)
 					fw = Fw[vs[row][p]]/vy:size(1)
 					norm_factor = nclasses/vs:size(2)
 					--predictions[row][p] = norm_factor * (fcw+nc*fw)/(fc+nc) 
-					predictions[row][p] = norm_factor * (fc)/(fc+nc) 
+					if fcw>0 then
+						predictions[row][p] = norm_factor * (fcw)/(fc+nc) 
+					else
+						--construct Z
+
+						predictions[row][p] = 0
+					end
+
 				end
 			end
 		elseif dwin==2 then
@@ -306,9 +313,10 @@ function trainNN(model, criterion, X, y, vX, vy, vs, tX, ts)
 		--compute perplexity on subset
 		predictions = torch.DoubleTensor(vy:size(1), vs:size(2)):cuda():fill(0)
 		for row=1,  vX:size(1) do
-			for p=1, vs:size(2):
+			for p=1, vs:size(2) do
 				predictions[row][p] = yhat[row][vs[p]]
-		end	
+			end	
+		end
 
 
 		if opt.savePreds == 'true' then

@@ -295,7 +295,7 @@ function trainNN(model, criterion, X, y, vX, vy, vs, tX, ts, lt)
 				predictions[row][p] = yhat[row][vs[row][p]]
 			end
 		end	
-		predictions = nn.SoftMax():cuda():forward(subpreds)
+		predictions = nn.SoftMax():cuda():forward(predictions)
 		loss, examples = criterion:forward(predictions,vy)
 		perplexity = torch.exp(loss)
 
