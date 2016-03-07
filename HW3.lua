@@ -234,13 +234,13 @@ function nnlm(X, y, vX, vy, vs, dwin, nclasses, tX, ts)
       mlp:cuda()
       criterion:cuda()
     end
-    model = trainNN(mlp, criterion, X, y, vX, vy, tX, ts)
+    model = trainNN(mlp, criterion, X, y, vX, vy, vs, tX, ts)
 
 end
 
 
 
-function trainNN(model, criterion, X, y, vX, vy, tX, ts)    
+function trainNN(model, criterion, X, y, vX, vy, vs, tX, ts)    
 
     print(X:size(1), "size of the test set")
     --SGD after torch nn tutorial and https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
