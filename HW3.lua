@@ -289,7 +289,7 @@ function trainNN(model, criterion, X, y, vX, vy, tX, ts)
 		--compute perplexity on subset
 		predictions = torch.DoubleTensor(vy:size(1), vs:size(2)):cuda():fill(0)
 		for row=1,  vX:size(1) do
-			for p=1, vs:size(2):
+			for p=1, vs:size(2) do
 				predictions[row][p] = yhat[row][vs[row][p]]
 			end
 		end	
