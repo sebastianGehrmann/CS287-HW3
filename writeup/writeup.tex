@@ -2,6 +2,7 @@
 \documentclass[11pt]{article}
 
 \usepackage{common}
+\usepackage{url}
 \title{HW3: Language Models}
 \author{Sebastian Gehrmann \\ gehrmann@seas.harvard.edu}
 \begin{document}
@@ -9,123 +10,92 @@
 \maketitle{}
 \section{Introduction}
 
-This note lays out our expectation for a homework submission in
-\textit{CS287: Statistical Natural Language Processing}. While you do
-not have to follow this template to the letter, we do expect that
-write-ups have a very clear structure and cover all the elements
-described in this note. With this in mind, the burden is on the
-presenter to demonstrate why deviations from the standard are
-necessary.
+A crucial task in natural language processing is language modeling. Language modeling means calculating the probability of a sentence. This is important for many problems in speech recognition, machine translation, text summarization and many more. 
 
-All write-ups should include a short introduction. In this section you
-should summarize the underlying problem in high-level language and
-describe the extensions that you have decided to propose in your
-implementation. When you describe these extensions you should
-carefully cite the papers of interest. For instance, it will often be
-useful to cite the work seen in class
-\citep{murphy2012machine}. Alternatively, you can also cite papers
-inline, for instance the work of \citet{berger1996maximum}.
+A standard approach to this problem is calculating the probability of a word given the previous $n$ words. 
+This reduces the problem to a classification problem of a special kind. It is special in the sense that it has many possible classes (all words in a vocabulary) in which there is not a correct class. The goal is to model the correct probability distribution over the next word (class).
+
+
+In this paper, we present and compare two different approaches. The first is building a count-based language model with different smoothing methods to attack the sparsity of the data. The second is the neural language model - a neural network that takes as input the previous $n$ words and produces the probability distribution over the following word~\citep{Bengio2003neural}.
+
+The code can be found at \url{https://github.com/sebastianGehrmann/CS287-HW3} and the capability of it can be seen in the kaggle competition with the username `'Sebastian'' (the current best model is a neural network with trigrams).
 
 
 \section{Problem Description}
 
-In general, homeworks will be specified using informal
-language. As part of the assignment, we expect you to write-out a
-definition of the problem and your model in formal language. For this
-class, we will use the following notation:
+A sentence is composed of $n$ words, all of which can syntactically and semantically influence each other. There are even longer dependencies over more sentences or even paragraphs. Thus, in order to have a perfect model of a language, one has to take into account all words. To do this, the probability of a sentence is defined as the product of all the probabilities of its words. 
 
-\begin{itemize}
-\item $\boldb, \boldm$;  bold letters for vectors.
-\item $\boldB, \boldM$;  bold capital letters for matrices.
-\item $\mcB, \mcM$;  script-case for sets.
-\item $b_i, x_i$; lower case for scalars or indexing into vectors.
-\end{itemize}
+That means, one has to compute $p(w_i|w_1, \ldots ,w_{i-1})$ - that is the probability of a word given all the previous words in a text. This leads to a problem of sparsity. What is the probability of a word if we have not seen it in this exact context?
+
+To approach this problem, we hypothesize that the words in closer proximity have most of the influence on the probability. We can therefore disregard most of the context and not many information. Taking only $n$ words into account is called $n$-gram model which is defined as 
+
+$$p(w_i|w_{i-n+1}, \ldots, w_{i-1})$$
+
+This yields a probability distribution over the whole vocabulary of words for a given task. Since there is not one perfect word that can come next, but many words with different probabilities, the prediction accuracy is no longer a valid method of evaluating the performance of the model. Instead, we compute the perplexity. Perplexity is defined as $e$ to the power of the average negative log-likelihood (NLL) $perp = \exp(-\frac{1}{n}\sum_{i=1}^{n}\log p(w_i|w_1,\ldots,w_{i-1})$. 
 
 
-For instance in natural language processing, it is common to use
-discrete sets like $\mcV$ for the vocabulary of the language, or $\mcT$ for a
-tag set of the language.  We might also want one-hot vectors
-representing words. These will be of the type
-$\boldv \in \{0,1\}^{|\mcV|}$. In a note, it is crucial to define the
-types of all variables that are introduced. The problem description is the
-right place to do this.
-
-% NLP is also
-% full of sequences. For instance sentences, $w_1, \ldots, w_N$, where
-% here $N$ is a constant length and $w_i \in \mcV$ for all
-% $i \in \{1, \ldots N\}$. If we pretend sentences are all the same
-% length, we can have scoring function over sentences,
-% $s : \mcV^N \mapsto \reals$.  One might be defined as:
-
-% \[ s(w_1, \ldots, w_N) = \sum_{i = 1}^N p(w_i | w_{i-2}, w_{i-1}), \]
-
-% \noindent where $p$ is the bigram probability, which we will cover later in the class.
 
 \section{Model and Algorithms}
 
-Here you specify the model itself. This section should formally
-describe the model used to solve the task proposed in the previous
-section. This section should try to avoid introducing new vocabulary
-or notation, when possible use the notation from the previous section.
-Feel free to use the notation from class, but try to make the note
-understandable as a standalone piece of text.
-
-This section is also a great place to include other material that
-describes the underlying structure and choices of your model, for
-instance here are some example tables and algorithms from full
-research papers:
-
-
-
+The first approach we report on is a multinomial estimate of $p(w_i|w_{i-n+1}, \ldots, w_{i-1})$. Since the data is sparse, we need to deal with previously unseen contexts. This is done by using different smoothing methods. In this paper we compare the three methods 
 \begin{itemize}
-\item diagrams of your model,
-
-  \begin{center}
-    \includegraphics[width=0.4\textwidth]{network}
-  \end{center}
-\item feature tables,
-
-  \begin{center}
-    \begin{tabular}{@{}lll@{}}
-      \toprule
-      &\multicolumn{2}{c}{Mention Features  } \\
-      & Feature & Value Set\\
-      \midrule
-      & Mention Head & $\mcV$ \\
-      & Mention First Word & $\mcV$ \\
-      & Mention Last Word & $\mcV$ \\
-      & Word Preceding Mention & $\mcV$ \\
-      & Word Following Mention & $\mcV$\\
-      & \# Words in Mention & $\{1, 2, \ldots \}$ \\
-      & Mention Type & $\mathcal{T}$ \\
-      \bottomrule
-    \end{tabular}
-  \end{center}
-
-\item pseudo-code,
-
-  \begin{algorithmic}[1]
-    \Procedure{Linearize}{$x_1\ldots x_N$, $K$, $g$}
-    \State{$B_0 \gets \langle (\langle \rangle, \{1, \ldots, N\}, 0, \boldh_0, \mathbf{0})  \rangle$}
-    \For{$m = 0, \ldots, M-1$ }
-    \For{$k = 1, \ldots, |B_m|$}
-    \For{$i \in \mcR$}
-    \State{$(y, \mcR, s, \boldh) \gets \mathrm{copy}(B_m^{(k)})$}
-    \For{word $w$ in phrase $x_i$}
-    \State{$y \gets y $ append $w$ }
-    \State{$s \gets s + \log q(w, \boldh) $ }
-    \State{$\boldh \gets \delta(w, \boldh)$}
-    \EndFor{}
-    \State{$B_{m+|w_i|} \gets B_{m+|w_i|} + (y, \mcR - i, s,   \boldh)$}
-    \State{keep top-$K$ of $B_{m+|w_i|}$ by $f(x, y) + g(\mcR)$}
-    \EndFor{}
-    \EndFor{}
-    \EndFor{}
-    \State{\Return{$B_{M}^{(k)}$}}
-    \EndProcedure{}
-  \end{algorithmic}
-
+\item Simple maximum Likelihood estimation
+\item Estimation with Laplace Smoothing ($\alpha$)
+\item Estimation with Witten-Bell
 \end{itemize}
+
+The second approach is modeled after the work of \citet{Bengio2003neural} which is a neural network that takes as input the contexts and the words to learn the probability distribution over the next word. 
+
+\subsection{Maximum Likelihood}
+
+This is the most simple method of estimating the probabilities for a word. The maximum likelihood estimation is completely count based. Such, we count the occurrences of every context $F_{c,\cdot}$ and the occurrences of every context with a word $F_{c,w}$. 
+
+To calculate $p_{ML}(w|c)$, we only have to calculate $\frac{F_{c,w}}{F_{c,\cdot}}$. Intuitively, we just learn the ratio of how often that word occurs given the context and compare it to how often we see the context in general. 
+
+While this makes a lot of sense, we don't attack the problem that this estimate is always only as good as our training data. Since the number of possible combinations of words is growing exponentially with the size of the n-gram, the data will be incredibly sparse and many of the probabilities will be 0. 
+This makes it necessary to smooth the counts.
+
+\subsection{Laplace Smoothing}
+
+Laplace smoothing is the easiest way to attack the problem of unseen words. We assume that we have seen every word-context combination exactly $\alpha$ times more than we have actually seen it, and increase the count for the contexts subsequently by $\alpha |\mathcal{V}|$ where $\mathcal{V}$ is the vocabulary.
+
+However, this punishes frequent words and more than proportionally benefits rare words as all words are treated equally. To get around this, we use a third method called Witten-Bell.
+
+\subsection{Witten-Bell}
+
+The idea of smoothing methods like Witten-Bell is to use the backoff of a context (context without first word) and interpolate the maximum likelihood probabilities using different backoffs. 
+That means that we combine for a trigram the trigram, bigram and unigram probabilities and multiply them by a parameter so that the result is still a probability distribution. 
+To put is in mathematical form, the interpolation probability is 
+
+$$p_{interp} = \lambda_1p_{ML}(w|c) + \lambda_2p_{ML}(w|c') + \lambda_3p_{ML}(w|c'')$$
+To ensure the convexity of the combination we set the lambdas so that
+
+$$\sum_i\lambda_i=1$$
+$$\lambda_i \geq 0 \forall i$$
+
+In the case of Witten-Bell, we use a special form for $\lambda$ by setting 
+
+$$(1-\lambda) = \frac{N_{c,\cdot}}{N_{c, \cdot}+F_{c,\cdot}}$$
+
+Here, N is the count of unique words seen in a context which is different from F which is the total number of times we have seen the context. 
+Be inserting this into the interpolation formula, we can define the probability recursively and n-gram size independently as
+
+$$p_{WB}(w|c)=\frac{F_{c,w} + N_{c, \cdot}p_{WB}(w|c')}{F_{c,\cdot}+N_{c,\cdot}}$$
+
+Now, we have an estimation for new words that is proportional to the probability of seeing a new word. That way, common contexts punish rare words while rare contexts are more liberal in giving a higher probability during the smoothing.
+
+\subsection{Neural Language Model}
+
+N-gram models suffer from the common problem in NLP that shared features between words are not exploited. As an example, the sentences `'The dog sleeps'' and `'A cat naps'' are completely different for the count-based models even though they are semantically very similar. Not even backoff would help because they do not share any words. 
+We can get around this flaw by using word-embeddings and a neural network to learn the interactions between the words. 
+Using the words $f_1, \ldots f_{d_{win}}$ in the window, we concatenate their embeddings to have position-sensitive weights to learn. This concatenation is $\bf{x}$. 
+The network is a standard multilayer perceptron, which means that the output looks like 
+$$ NN_{MLP}=\tanh(\bf{xW}^1+\bf{b}^1)\bf{W}^2+\bf{b}^2$$
+
+
+
+
+
 
 
 \section{Experiments}
@@ -156,12 +126,6 @@ body of the text itself.
 \caption{\label{tab:results} Table with the main results.}
 \end{table}
 
-
-\begin{figure}
-  \centering
-  \includegraphics[width=6cm]{cluster_viz}
-  \caption{\label{fig:clusters} Sample qualitative chart.}
-\end{figure}
 
 
 \section{Conclusion}

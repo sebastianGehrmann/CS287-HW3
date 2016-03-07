@@ -52,14 +52,14 @@ function maximumLikelihoodTable(X, y, alpha, dwin, nclasses)
 			xlua.progress(row, X:size(1))
 		end
 		if dwin==1 then
-			setDefault(Fcw, alpha*nclasses)
+			setDefault(Fc, alpha*nclasses)
 			if Fcw[X[row][1]] == 0 then
 				c = {}
 				setDefault(c, alpha) --laplace
 				Fcw[X[row][1]] = c
 			end
 			Fc[X[row][1]] = Fc[X[row][1]] + 1
-			Fcw[X[row][1]][y[row][1]] = Fcw[X[row][1]][y[row][1]] + 1
+			Fcw[X[row][1]][y[row]] = Fcw[X[row][1]][y[row]] + 1
 		elseif dwin==2 then
 			--deal with empty dicts
 			if Fc[X[row][1]] == 0 then
@@ -79,7 +79,11 @@ function maximumLikelihoodTable(X, y, alpha, dwin, nclasses)
 			end
 			-- count the context
 			Fc[X[row][1]][X[row][2]] = Fc[X[row][1]][X[row][2]] + 1
-			Fcw[X[row][1]][X[row][2]][y[row][1]] = Fcw[X[row][1]][X[row][2]][y[row][1]] + 1
+			-- print(Fcw[X[row][1]])
+			-- print(Fcw[X[row][1]][X[row][2]])
+			-- print(Fcw[X[row][1]][X[row][2]][y[row]])
+
+			Fcw[X[row][1]][X[row][2]][y[row]] = Fcw[X[row][1]][X[row][2]][y[row]] + 1
 
 		else 
 			print("longer n-grams not implemented")
@@ -133,7 +137,7 @@ function wordprob(y)
 	probs = {}
 	setDefault(probs, 0)
 	for row=1, y:size(1) do
-		probs[y[row][1]] = probs[y[row][1]] + 1
+		probs[y[row]] = probs[y[row]] + 1
 	end
 	return probs
 end
@@ -166,7 +170,6 @@ function wittenBell(X, y, vX, vy, vs, dwin, nclasses)
 				end
 			end
 		elseif dwin==2 then
-			-- 2) implement formula 
 			for p=1,vs:size(2) do
 				if Fc[vX[row][1]] == 0 then
 					predictions[row][p] = 0
@@ -348,7 +351,6 @@ function main()
 	vin = f:read('valid_blanks_input'):all()
 	vset = f:read('valid_blanks_set'):all()
 	vset = vset:narrow(2, dwin+1, vset:size(2)-dwin-1)
-	print(vset[1])
 	vout = f:read('valid_output'):all():squeeze()
 
 	testin = f:read('test_input'):all()

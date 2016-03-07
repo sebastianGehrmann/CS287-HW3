@@ -242,70 +242,84 @@ end
 
 function trainNN(model, criterion, X, y, vX, vy, tX, ts)    
 
-   print(X:size(1), "size of the test set")
-   --SGD after torch nn tutorial and https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
-   for i=1, opt.epochs do
-      --shuffle data
-      shuffle = torch.randperm(X:size(1))
-      losstotal = 0
-      --mini batches, yay
-      for t=1, X:size(1), opt.batchsize do
-         --xlua.progress(t, X:size(1))
+    print(X:size(1), "size of the test set")
+    --SGD after torch nn tutorial and https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
+    for i=1, opt.epochs do
+		--shuffle data
+		shuffle = torch.randperm(X:size(1))
+		losstotal = 0
+		--mini batches, yay
+		for t=1, X:size(1), opt.batchsize do
+			 --xlua.progress(t, X:size(1))
 
-         local inputs = torch.Tensor(opt.batchsize, X:size(2)):cuda()
-         local targets = torch.Tensor(opt.batchsize):cuda()
-         local k = 1
-         for i = t,math.min(t+opt.batchsize-1,X:size(1)) do
-            -- load new sample
-            inputs[k] = X[shuffle[i]]
-            targets[k] = y[shuffle[i]]
-            k = k+1
-         end
-         k=k-1
-         --in case the last batch is < batchsize
-         if k < opt.batchsize then
-           inputs = inputs:narrow(1, 1, k):clone()
-           targets = targets:narrow(1, 1, k):clone()
-         end
-         --zero out
-         model:zeroGradParameters()
-         --predict and compute loss
-         preds = model:forward(inputs)
-         loss = criterion:forward(preds, targets) 
-         losstotal = losstotal + loss     
-         dLdpreds = criterion:backward(preds, targets)
-         model:backward(inputs, dLdpreds)
-         model:updateParameters(opt.eta)
-      end
-      print("\nepoch " .. i .. ", loss: " .. losstotal*opt.batchsize/X:size(1))
+			local inputs = torch.Tensor(opt.batchsize, X:size(2)):cuda()
+			local targets = torch.Tensor(opt.batchsize):cuda()
+			local k = 1
+			for i = t,math.min(t+opt.batchsize-1,X:size(1)) do
+				-- load new sample
+				inputs[k] = X[shuffle[i]]
+				targets[k] = y[shuffle[i]]
+				k = k+1
+			end
+			k=k-1
+			--in case the last batch is < batchsize
+			if k < opt.batchsize then
+				inputs = inputs:narrow(1, 1, k):clone()
+				targets = targets:narrow(1, 1, k):clone()
+			end
+			--zero out
+			model:zeroGradParameters()	
+			--predict and compute loss
+			preds = model:forward(inputs)
+			loss = criterion:forward(preds, targets) 
+			losstotal = losstotal + loss     
+			dLdpreds = criterion:backward(preds, targets)
+			model:backward(inputs, dLdpreds)
+			model:updateParameters(opt.eta)
+		end
+		print("\nepoch " .. i .. ", loss: " .. losstotal*opt.batchsize/X:size(1))
 
-      yhat = model:forward(vX)
-      loss, examples = criterion:forward(yhat,vy)
-      perplexity = torch.exp(loss)
+		yhat = model:forward(vX)
+		loss, examples = criterion:forward(yhat,vy)
+		perplexity = torch.exp(loss)
 
-      print(perplexity, "Perplexity on validation set")
-      print(examples, "Number examples")
+		print(perplexity, "Perplexity on validation set")
+		print(examples, "Number examples")
 
-      if opt.savePreds == 'true' then
-    	preds = model:forward(tX)
-    	subpreds = torch.Tensor(preds:size(1), ts:size(2)):fill(0):cuda()
-    	for row=1, preds:size(1) do
-    		for class=1, ts:size(2) do
-    			cpred = preds[row][ts[row][class]]
-    			subpreds[row][class] = cpred
-    		end
+		--compute perplexity on subset
+		predictions = torch.DoubleTensor(vy:size(1), vs:size(2)):cuda():fill(0)
+		for row=1,  vX:size(1) do
+			for p=1, vs:size(2):
+				predictions[row][p] = yhat[row][vs[row][p]]
+		end	
+		predictions = nn.SoftMax():cuda():forward(subpreds)
+		loss, examples = criterion:forward(predictions,vy)
+		perplexity = torch.exp(loss)
+
+		print(perplexity, "Perplexity on validation set")
+		print(examples, "Number examples")
+
+
+		if opt.savePreds == 'true' then
+			preds = model:forward(tX)
+			subpreds = torch.Tensor(preds:size(1), ts:size(2)):fill(0):cuda()
+			for row=1, preds:size(1) do
+				for class=1, ts:size(2) do
+					cpred = preds[row][ts[row][class]]
+					subpreds[row][class] = cpred
+				end
+			end
+	    	renormalized = nn.SoftMax():cuda():forward(subpreds)
+	    	val = string.format("%.2f", perplexity)
+	        l = string.format("%.4f", loss)
+	    	-- filename = opt.savefolder .. i .. "-" .. tostring(tX:size(2)+1) .. "-" .. val .. "-" .. l .. ".txt"
+	     	-- torch.save(filename, renormalized, 'ascii')
+	    	filename = opt.savefolder .. i .. "-" .. tostring(tX:size(2)+1) .. "-" .. val .. "-" .. l .. ".h5"
+			local myFile = hdf5.open(filename, 'w')
+			myFile:write('preds', renormalized:float())
+			myFile:close()
     	end
-    	renormalized = nn.SoftMax():cuda():forward(subpreds)
-    	val = string.format("%.2f", perplexity)
-        l = string.format("%.4f", loss)
-    	-- filename = opt.savefolder .. i .. "-" .. tostring(tX:size(2)+1) .. "-" .. val .. "-" .. l .. ".txt"
-     	-- torch.save(filename, renormalized, 'ascii')
-    	filename = opt.savefolder .. i .. "-" .. tostring(tX:size(2)+1) .. "-" .. val .. "-" .. l .. ".h5"
-		local myFile = hdf5.open(filename, 'w')
-		myFile:write('preds', renormalized:float())
-		myFile:close()
-    end
-   end
+	end
 
    return model
 end
