@@ -4,7 +4,7 @@
 #SBATCH -e slurm-%j.err
 #SBATCH -p holyseasgpu
 #SBATCH --gres=gpu:1
-#SBATCH --mem=2000
+#SBATCH --mem=4000
 #SBATCH --nodes=1
 #SBATCH --tasks-per-node=1
 #SBATCH --mail-type=END

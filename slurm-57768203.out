@@ -1,0 +1,82 @@
+[?1034husing CUDA on GPU 0...	
+929589	size of the test set	
+
+epoch 1, loss: 6.4942717424731	
+377.42523555283	Perplexity on validation set	
+3370	Number examples	
+
+epoch 2, loss: 6.0408566429347	
+479.08126168237	Perplexity on validation set	
+3370	Number examples	
+
+epoch 3, loss: 5.9067393519714	
+552.91782323386	Perplexity on validation set	
+3370	Number examples	
+
+epoch 4, loss: 5.8216561942201	
+630.66809638462	Perplexity on validation set	
+3370	Number examples	
+
+epoch 5, loss: 5.7589530687321	
+677.54502585281	Perplexity on validation set	
+3370	Number examples	
+
+epoch 6, loss: 5.7086807932361	
+702.35339121938	Perplexity on validation set	
+3370	Number examples	
+
+epoch 7, loss: 5.6670143598859	
+740.56314811718	Perplexity on validation set	
+3370	Number examples	
+
+epoch 8, loss: 5.6311087508173	
+808.47164476702	Perplexity on validation set	
+3370	Number examples	
+
+epoch 9, loss: 5.5994475768373	
+853.75297481953	Perplexity on validation set	
+3370	Number examples	
+
+epoch 10, loss: 5.5712108874139	
+883.35585190616	Perplexity on validation set	
+3370	Number examples	
+
+epoch 11, loss: 5.5458426302726	
+910.60162798214	Perplexity on validation set	
+3370	Number examples	
+
+epoch 12, loss: 5.5226011723962	
+926.1304597814	Perplexity on validation set	
+3370	Number examples	
+
+epoch 13, loss: 5.5011208469735	
+977.69534791	Perplexity on validation set	
+3370	Number examples	
+
+epoch 14, loss: 5.4812867483985	
+991.70624268308	Perplexity on validation set	
+3370	Number examples	
+
+epoch 15, loss: 5.4626501475208	
+1005.742381145	Perplexity on validation set	
+3370	Number examples	
+
+epoch 16, loss: 5.4452052624614	
+1028.0514703063	Perplexity on validation set	
+3370	Number examples	
+
+epoch 17, loss: 5.4289065651726	
+1075.3182594592	Perplexity on validation set	
+3370	Number examples	
+
+epoch 18, loss: 5.4133595560791	
+1096.1798844452	Perplexity on validation set	
+3370	Number examples	
+
+epoch 19, loss: 5.3985999006589	
+1127.1791347321	Perplexity on validation set	
+3370	Number examples	
+
+epoch 20, loss: 5.3846784819043	
+1155.5700957517	Perplexity on validation set	
+3370	Number examples	

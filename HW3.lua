@@ -302,7 +302,7 @@ function trainNN(model, criterion, X, y, vX, vy, tX, ts)
      	-- torch.save(filename, renormalized, 'ascii')
     	filename = opt.savefolder .. i .. "-" .. tostring(tX:size(2)+1) .. "-" .. val .. "-" .. l .. ".h5"
 		local myFile = hdf5.open(filename, 'w')
-		myFile:write('preds', renormalized)
+		myFile:write('preds', renormalized:float())
 		myFile:close()
     end
    end
