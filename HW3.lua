@@ -302,7 +302,7 @@ function trainNN(model, criterion, X, y, vX, vy, tX, ts)
      	-- torch.save(filename, renormalized, 'ascii')
     	filename = opt.savefolder .. i .. "-" .. tostring(tX:size(2)+1) .. "-" .. val .. "-" .. l .. ".h5"
 		local myFile = hdf5.open(filename, 'w')
-		myFile:write('preds', renormalized)
+		myFile:write('preds', renormalized:float())
 		myFile:close()
     end
    end
@@ -332,12 +332,12 @@ function main()
 
 	vin = f:read('valid_blanks_input'):all():cuda()
 	vset = f:read('valid_blanks_set'):all():cuda()
-	vset = vset:narrow(2, 2, vset:size(2)-2):cuda()
+	vset = vset:narrow(2, dwin+1, vset:size(2)-dwin-1):cuda()
 	vout = f:read('valid_output'):all():squeeze():cuda()
 
 	testin = f:read('test_input'):all():cuda()
 	testout = f:read('test_set'):all():cuda()
-	testout = testout:narrow(2, 2, testout:size(2)-2):cuda()
+	testout = testout:narrow(2, dwin+1, testout:size(2)-dwin-1):cuda()
 
 	if opt.dev == 'true' then
       print('Development mode')
