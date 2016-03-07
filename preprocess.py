@@ -57,7 +57,7 @@ def convert_test(filename, word2idx, dwin):
     with open(filename) as f:
         for i, line in enumerate(f):
             if (line[0] == "Q"):
-                sent = transform_sent(line[2:], word2idx, dwin)
+                sent = transform_sent(line[dwin:], word2idx, dwin)
                 lbl_set.append(sent)
             else:
                 sent = transform_test_sent(line[2:], word2idx, dwin)
