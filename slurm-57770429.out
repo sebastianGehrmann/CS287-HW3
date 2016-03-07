@@ -1,0 +1,78 @@
+[?1034husing CUDA on GPU 0...	
+929589	size of the test set	
+
+epoch 1, loss: 9.1349079882648	
+9148.0666083037	Perplexity on validation set	
+3370	Number examples	
+
+epoch 2, loss: 8.816458881479	
+7111.6236280467	Perplexity on validation set	
+3370	Number examples	
+
+epoch 3, loss: 8.3342377037374	
+4843.877289067	Perplexity on validation set	
+3370	Number examples	
+
+epoch 4, loss: 7.9077461261971	
+3238.8094334933	Perplexity on validation set	
+3370	Number examples	
+
+epoch 5, loss: 7.6018054512756	
+2201.7749294635	Perplexity on validation set	
+3370	Number examples	
+
+epoch 6, loss: 7.3795822224528	
+1543.4543661843	Perplexity on validation set	
+3370	Number examples	
+
+epoch 7, loss: 7.2092467205475	
+1107.4656893618	Perplexity on validation set	
+3370	Number examples	
+
+epoch 8, loss: 7.0792212345805	
+819.40392571721	Perplexity on validation set	
+3370	Number examples	
+
+epoch 9, loss: 6.9814529621255	
+630.72222938464	Perplexity on validation set	
+3370	Number examples	
+
+epoch 10, loss: 6.9060713362932	
+505.02620987661	Perplexity on validation set	
+3370	Number examples	
+
+epoch 11, loss: 6.8460862630526	
+421.25471991813	Perplexity on validation set	
+3370	Number examples	
+
+epoch 12, loss: 6.7972821418596	
+365.01000168962	Perplexity on validation set	
+3370	Number examples	
+
+epoch 13, loss: 6.7565948292833	
+327.38746281578	Perplexity on validation set	
+3370	Number examples	
+
+epoch 14, loss: 6.7217172649943	
+301.76558776124	Perplexity on validation set	
+3370	Number examples	
+
+epoch 15, loss: 6.6910321952693	
+284.76472225398	Perplexity on validation set	
+3370	Number examples	
+
+epoch 16, loss: 6.6634799507529	
+272.89353710411	Perplexity on validation set	
+3370	Number examples	
+
+epoch 17, loss: 6.6383916837789	
+265.33474614582	Perplexity on validation set	
+3370	Number examples	
+
+epoch 18, loss: 6.6153648989721	
+260.2776592732	Perplexity on validation set	
+3370	Number examples	
+
+epoch 19, loss: 6.5941289633062	
+257.53400057933	Perplexity on validation set	
+3370	Number examples	
