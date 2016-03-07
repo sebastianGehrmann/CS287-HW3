@@ -291,6 +291,7 @@ function trainNN(model, criterion, X, y, vX, vy, tX, ts)
 		for row=1,  vX:size(1) do
 			for p=1, vs:size(2):
 				predictions[row][p] = yhat[row][vs[row][p]]
+			end
 		end	
 		predictions = nn.SoftMax():cuda():forward(subpreds)
 		loss, examples = criterion:forward(predictions,vy)
