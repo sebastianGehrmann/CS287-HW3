@@ -166,7 +166,8 @@ function wittenBell(X, y, vX, vy, vs, dwin, nclasses)
 					fcw = Fcw[vX[row][1]][vs[row][p]]
 					fw = Fw[vs[row][p]]/vy:size(1)
 					norm_factor = nclasses/vs:size(2)
-					predictions[row][p] = norm_factor * (fcw+nc*fw)/(fc+nc) 
+					--predictions[row][p] = norm_factor * (fcw+nc*fw)/(fc+nc) 
+					predictions[row][p] = norm_factor * (fc)/(fc+nc) 
 				end
 			end
 		elseif dwin==2 then
@@ -236,13 +237,13 @@ function nnlm(X, y, vX, vy, vs, dwin, nclasses, tX, ts)
       mlp:cuda()
       criterion:cuda()
     end
-    model = trainNN(mlp, criterion, X, y, vX, vy, tX, ts)
+    model = trainNN(mlp, criterion, X, y, vX, vy, vs, tX, ts)
 
 end
 
 
 
-function trainNN(model, criterion, X, y, vX, vy, tX, ts)    
+function trainNN(model, criterion, X, y, vX, vy, vs, tX, ts)    
 
     print(X:size(1), "size of the test set")
     local params, grad_params = model:getParameters()
@@ -301,6 +302,14 @@ function trainNN(model, criterion, X, y, vX, vy, tX, ts)
 
 		print(perplexity, "Perplexity on validation set")
 		print(examples, "Number examples")
+
+		--compute perplexity on subset
+		predictions = torch.DoubleTensor(vy:size(1), vs:size(2)):cuda():fill(0)
+		for row=1,  vX:size(1) do
+			for p=1, vs:size(2):
+				predictions[row][p] = yhat[row][vs[p]]
+		end	
+
 
 		if opt.savePreds == 'true' then
 			print(ts:size())
