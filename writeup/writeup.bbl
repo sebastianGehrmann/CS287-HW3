@@ -5,4 +5,17 @@ Bengio, Y., Ducharme, R., Vincent, P., and Janvin, C. (2003).
 \newblock A neural probabilistic language model.
 \newblock {\em J. Mach. Learn. Res.}, 3:1137--1155.
 
+\bibitem[Gutmann and Hyv{\"a}rinen, 2010]{gutmann2010noise}
+Gutmann, M. and Hyv{\"a}rinen, A. (2010).
+\newblock Noise-contrastive estimation: A new estimation principle for
+  unnormalized statistical models.
+\newblock In {\em International Conference on Artificial Intelligence and
+  Statistics}, pages 297--304.
+
+\bibitem[Mnih and Teh, 2012]{mnih2012fast}
+Mnih, A. and Teh, Y.~W. (2012).
+\newblock A fast and simple algorithm for training neural probabilistic
+  language models.
+\newblock {\em arXiv preprint arXiv:1206.6426}.
+
 \end{thebibliography}

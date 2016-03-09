@@ -18,7 +18,7 @@ This reduces the problem to a classification problem of a special kind. It is sp
 
 In this paper, we present and compare two different approaches. The first is building a count-based language model with different smoothing methods to attack the sparsity of the data. The second is the neural language model - a neural network that takes as input the previous $n$ words and produces the probability distribution over the following word~\citep{Bengio2003neural}.
 
-The code can be found at \url{https://github.com/sebastianGehrmann/CS287-HW3} and the capability of it can be seen in the kaggle competition with the username `'Sebastian'' (the current best model is a neural network with trigrams).
+The code can be found at \url{https://github.com/sebastianGehrmann/CS287-HW3} and the capability of it can be seen in the kaggle competition with the username `'Sebastian'' (the current best model is a neural network with trigrams). Different predictions can also be seen on the cluster in the folder \url{/n/regal/rush_lab/sebastian}. The names of the files are of the form EPOCH-DWIN-PERP-LOSS.h5.
 
 
 \section{Problem Description}
@@ -44,7 +44,7 @@ The first approach we report on is a multinomial estimate of $p(w_i|w_{i-n+1}, \
 \item Estimation with Witten-Bell
 \end{itemize}
 
-The second approach is modeled after the work of \citet{Bengio2003neural} which is a neural network that takes as input the contexts and the words to learn the probability distribution over the next word. 
+The second approach is modeled after the work of \citet{Bengio2003neural} which is a neural network that takes as input the contexts and the words to learn the probability distribution over the next word. We also try to implement noise-contrastive estimation~\citep{gutmann2010noise}, which similar to word2vec learns to distinguish between correct and incorrect samples.
 
 \subsection{Maximum Likelihood}
 
@@ -87,50 +87,79 @@ Now, we have an estimation for new words that is proportional to the probability
 \subsection{Neural Language Model}
 
 N-gram models suffer from the common problem in NLP that shared features between words are not exploited. As an example, the sentences `'The dog sleeps'' and `'A cat naps'' are completely different for the count-based models even though they are semantically very similar. Not even backoff would help because they do not share any words. 
-We can get around this flaw by using word-embeddings and a neural network to learn the interactions between the words. 
+We can get around this flaw by using word-embeddings and a neural network to learn the interactions between the words. The model in this paper is the same as in \citet{Bengio2003neural}
 Using the words $f_1, \ldots f_{d_{win}}$ in the window, we concatenate their embeddings to have position-sensitive weights to learn. This concatenation is $\bf{x}$. 
-The network is a standard multilayer perceptron, which means that the output looks like 
+The network is a standard multilayer perceptron (MLP), which means that the output looks like 
 $$ NN_{MLP}=\tanh(\bf{xW}^1+\bf{b}^1)\bf{W}^2+\bf{b}^2$$
 
+To force the distribution, we define $\hat{y}$ as the softmax of the result of the MLP. 
+The model is trained by minimizing the Cross-entropy using minibatch-SGD
 
+\subsection{Noise-Contrastive Estimation}
 
+A downside of the neural language model is the long time it needs to train. This is because for every prediction, it has to compute the softmax over all potential output classes (in the partition function) to force a distribution. 
+The idea behind noise-contrastive estimation (NCE) is to use the scores $\bf z = \tanh(\bf x\bf W^1 + \bf b^1)\bf W^2 + \bf b^2$ directly.~\citep{gutmann2010noise}
 
+The goal of the scores is to reinforce correct predictions and punish wrong predictions just as in ranking-loss. We can do this by using the sigmoid-function $\sigma$ on the scores $\bf z$. Thus, we have to for every test-batch create a data set of the form $((\bf x_1, y_1), d_1), \ldots, ((\bf x_n, y_n), d_n)$ in which $y$ is the class for which we want to calculate the score and $d$ says whether the $y$ was the correct class. Predicting all these scores will yield a prediction $\hat d$, which we then can compare to the actual $d$ using cross-entropy loss.
+Implementation-wise, this is similar to a neural language model. However, instead of computing the full $\bf W^2$ plus softmax, we only use a lookup for the samples in the current dataset $\bf W^2_{\cdot, w}$ and compute $\sigma$. 
 
+The probability of a true sample can be split as 
 
+$$p(d=1|\textbf {x}, \textbf y) = \sigma(\log p(\textbf y|d=1, \textbf x) + \sigma(\log p(\textbf y|d=0, \textbf x)$$
+
+To generate a probabilistic sample, we introduce a noise variable $K$ that defines the prior probability of a sample being correct or incorrect. That is, $p(correct) = \frac{1}{1+K}$ or K wrong samples per correct sample.
+\citet{mnih2012fast} show, that the loss for this model can be described as 
+
+$$\mathcal{L}(\theta) = \sum_i \log \sigma(z_{w_i} - \log(K_{p_{ML}}(w_i)) + \sum_{k=1}^K \log(1-\sigma(K_{p_{ML}}(s_{i,k}))$$
+
+This still leaves some questions regarding an efficient implementation. Luckily, both $z_w$ and $\log p_{ML}(w)$ can be looked up in a table. Since the scores are now no longer normalized, in order to compute the whole distribution, we can use the softmax again or compute the scores for a subset of the data which we will do in the experiments. 
 
 \section{Experiments}
 
-Finally we end with the experimental section. Each assignment will make clear the main experiments and baselines that you should run. For these experiments you should present a main results table. Here we give a sample Table~\ref{tab:results}. In addition to these results you should describe in words what the table shows and the relative performance of the models.
+We first report the results of the count-based models. Since the models are deterministic, there are not many parameters to try out. We report the perplexity on n-grams of sizes 2 and 3 on a smaller set of possible output classes (50).
 
-Besides the main results we will also ask you to present other results
-comparing particular aspects of the models. For instance, for word
-embedding experiments, we may ask you to show a chart of the projected
-word vectors. This experiment will lead to something like
-Figure~\ref{fig:clusters}. This should also be described within the
-body of the text itself.
+The results on the validation set can be seen in table~\ref{tab:count}. The baseline was chosen as the perplexity of a unigram prediction which is equal to the number of the possible classes. The lower the perplexity the better.
 
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
-\begin{tabular}{llr}
- \toprule
- Model &  & Acc. \\
- \midrule
- \textsc{Baseline 1} & & 0.45\\
- \textsc{Baseline 2} & & 2.59 \\
- \textsc{Model 1} & & 10.59  \\
- \textsc{Model 2} & &13.42 \\
- \textsc{Model 3} & & 7.49\\
- \bottomrule
+\begin{tabular}{@{}lll@{}}
+\toprule
+Model                & 2-Gram & 3-Gram \\ \midrule
+Baseline             & 50.00  & 50.00  \\ \midrule
+MLE                  & 9.42   & 16.63  \\
+Laplace $\alpha=0.1$ & 13.24  & 24.50  \\
+Laplace $\alpha=1$   & 20.88  & 35.32  \\
+Witten-Bell          & 16.41  & 17.36 
 \end{tabular}
-\caption{\label{tab:results} Table with the main results.}
+\caption{The results for count-based methods}
+\label{tab:count}
 \end{table}
 
+The second experiment was running the neural language model. We trained it with 2-grams, 3-grams and 5-grams. Additionally, two different typed of regularization were used. The first was no regularization, the second one was the renormalization of the l2-norm of the word embeddings after each epoch. The results of this experiment are shown in table~\ref{tab:nn}.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Model            & 2-Gram & 3-Gram & 5-Gram \\ \midrule
+Baseline         & 10,000 & 10,000 & 10,000 \\ \midrule
+NNLM             & 251.1  & 253.1  & 250.27 \\
+NNLM regularized & 190.3  & 189.4  & 191.4  \\ \bottomrule
+\end{tabular}
+\caption{The perplexity for the regularized and ne non-regularized NNLM}
+\label{tab:nn}
+\end{table}
+
+The perplexity of the regularized model with the smaller set is around 1, which means that is is extremely certain of the next coming word, regardless of the size of the n-gram.
 
 
 \section{Conclusion}
 
-End the write-up with a very short recap of the main experiments and the main results. Describe any challenges you may have faced, and what could have been improved in the model.
+As we can see in the count-based methods, a simple maximum-likelihood estimation is often a very good estimation, even outperforming methods like laplace-smoothing. Estimating the correct smoothing is a hard process and it assumes many things that are not necessarily true. However, since all count-based approaches are deterministic, the training is very fast, way faster than neural network approaches. 
+
+The neural network approaches however, outperform the count-based models and are very easy to scale to larger n-grams (even though in this task it does not seem to improve the perplexity too much).
+
 
 \bibliographystyle{apalike}
 \bibliography{writeup}

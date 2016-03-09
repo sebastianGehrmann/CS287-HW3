@@ -21,6 +21,8 @@ cmd:option('-demb', 50, 'Size of the embedding for Words')
 cmd:option('-eta', .02, 'Learning Rate')
 cmd:option('-epochs', 20, 'Number of Epochs')
 cmd:option('-batchsize', 32, 'Size of the Minibatch for SGD')
+cmd:option('-K', 32, 'Size of samples for NCE')
+
 
 -- ...
 
@@ -142,19 +144,22 @@ function wordprob(y)
 	return probs
 end
 
-function wittenBell(X, y, vX, vy, vs, dwin, nclasses)
-	--To Do: Adjust this for trigrams
-	local Fcw, Fc = maximumLikelihoodTable(X, y, 0, dwin, nclasses)
+function wittenBell(X, y, vX, vy, vs, alpha, dwin, nclasses)
+	--p(w|c) = F(w,c)/F(c)
+	Fcw, Fc = maximumLikelihoodTable(X, y, alpha, dwin, nclasses)
+	Fw  = wordprob(y)
 	local Fccw = {}
 	local Fcc = {}
 	if dwin==2 then
 		Fccw, Fcc = maximumLikelihoodTable(X:narrow(2, 2, X:size(2)-1), y, 0, dwin-1, nclasses)
 	end
-	Fw  = wordprob(y)
-	print("Likelihood table constructed")
+	print("\nLikelihood table constructed")
+	--for every example take max likelihood / compute perplexity
+	--only test on blanks? Store table in between?
 	predictions = torch.DoubleTensor(vy:size(1), vs:size(2)):fill(0)
-	print("Prediction Process")
-	for row=1, 100 do--vy:size(1) do
+	
+	print("Prediction Process:")
+	for row=1, vy:size(1) do
 		xlua.progress(row, vy:size(1))
 		if dwin==1 then
 			for p=1,vs:size(2) do
@@ -164,20 +169,13 @@ function wittenBell(X, y, vX, vy, vs, dwin, nclasses)
 					fc = Fc[vX[row][1]]
 					nc = #Fcw[vX[row][1]]
 					fcw = Fcw[vX[row][1]][vs[row][p]]
-					fw = Fw[vs[row][p]]/vy:size(1)
+					fw = Fw[vs[row][p]]/nclasses/2
 					norm_factor = nclasses/vs:size(2)
-					--predictions[row][p] = norm_factor * (fcw+nc*fw)/(fc+nc) 
-					if fcw>0 then
-						predictions[row][p] = norm_factor * (fcw)/(fc+nc) 
-					else
-						--construct Z
-
-						predictions[row][p] = 0
-					end
-
+					predictions[row][p] = norm_factor * (fcw+nc*fw)/(fc+nc) 
 				end
 			end
 		elseif dwin==2 then
+			--for all words to predict
 			for p=1,vs:size(2) do
 				if Fc[vX[row][1]] == 0 then
 					predictions[row][p] = 0
@@ -203,14 +201,14 @@ function wittenBell(X, y, vX, vy, vs, dwin, nclasses)
 				end
 			end
 		else 
-			print("longer n-grams not implemented")		
+			print("longer n-grams not implemented")
 		end
 	end
 	normalization = nn.LogSoftMax()
 	preds = normalization:forward(predictions)
 	perplexity(preds, vy)
-
 end
+
 
 function nnlm(X, y, vX, vy, vs, dwin, nclasses, tX, ts)
 	--transform input so that lookuptable is position sensitive
@@ -250,10 +248,9 @@ end
 
 
 
-function trainNN(model, criterion, X, y, vX, vy, vs, tX, ts)    
+function trainNN(model, criterion, X, y, vX, vy, vs, tX, ts, lt)    
 
     print(X:size(1), "size of the test set")
-    local params, grad_params = model:getParameters()
     --SGD after torch nn tutorial and https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
     for i=1, opt.epochs do
 		--shuffle data
@@ -261,7 +258,7 @@ function trainNN(model, criterion, X, y, vX, vy, vs, tX, ts)
 		losstotal = 0
 		--mini batches, yay
 		for t=1, X:size(1), opt.batchsize do
-			xlua.progress(t, X:size(1))
+			 --xlua.progress(t, X:size(1))
 
 			local inputs = torch.Tensor(opt.batchsize, X:size(2))
 			local targets = torch.Tensor(opt.batchsize)
@@ -279,7 +276,7 @@ function trainNN(model, criterion, X, y, vX, vy, vs, tX, ts)
 				targets = targets:narrow(1, 1, k):clone()
 			end
 			--zero out
-			model:zeroGradParameters()
+			model:zeroGradParameters()	
 			--predict and compute loss
 			preds = model:forward(inputs)
 			loss = criterion:forward(preds, targets) 
@@ -287,21 +284,10 @@ function trainNN(model, criterion, X, y, vX, vy, vs, tX, ts)
 			dLdpreds = criterion:backward(preds, targets)
 			model:backward(inputs, dLdpreds)
 			model:updateParameters(opt.eta)
-
-
-
-			params:add(grad_params:mul(-opt.eta))
-
 		end
-		--print("\nNorm of params", params)--:norm())
+		--renorm
+		wordEmbeddings.weight:renorm(2,2,1)
 		print("\nepoch " .. i .. ", loss: " .. losstotal*opt.batchsize/X:size(1))
-
-		yhat = model:forward(X)
-		loss, examples = criterion:forward(yhat,y)
-		perplexity = torch.exp(loss)
-
-		print(perplexity, "Perplexity on training set")
-		print(examples, "Number examples")
 
 		yhat = model:forward(vX)
 		loss, examples = criterion:forward(yhat,vy)
@@ -311,16 +297,21 @@ function trainNN(model, criterion, X, y, vX, vy, vs, tX, ts)
 		print(examples, "Number examples")
 
 		--compute perplexity on subset
-		predictions = torch.DoubleTensor(vy:size(1), vs:size(2)):cuda():fill(0)
+		predictions = torch.DoubleTensor(vy:size(1), vs:size(2)):fill(0)
 		for row=1,  vX:size(1) do
 			for p=1, vs:size(2) do
-				predictions[row][p] = yhat[row][vs[p]]
-			end	
-		end
+				predictions[row][p] = yhat[row][vs[row][p]]
+			end
+		end	
+		predictions = nn.SoftMax():forward(predictions)
+		loss, examples = criterion:forward(predictions,vy)
+		perplexity = torch.exp(loss)
+
+		print(perplexity, "Perplexity on validation set")
+		print(examples, "Number examples")
 
 
 		if opt.savePreds == 'true' then
-			print(ts:size())
 			preds = model:forward(tX)
 			subpreds = torch.Tensor(preds:size(1), ts:size(2)):fill(0)
 			for row=1, preds:size(1) do
@@ -329,20 +320,60 @@ function trainNN(model, criterion, X, y, vX, vy, vs, tX, ts)
 					subpreds[row][class] = cpred
 				end
 			end
-			renormalized = nn.SoftMax():forward(subpreds)
-			val = string.format("%.2f", perplexity)
-			l = string.format("%.4f", loss)
-			require 'hdf5'
-			filename = opt.savefolder .. i .. "-" .. tostring(tX:size(2)+1) .. "-" .. val .. "-" .. l .. ".h5"
-			-- local myFile = hdf5.open(filename, 'w')
-			-- myFile:write('preds', renormalized)
-			-- myFile:close()
-			--print(renormalized:size())
-			--torch.save(filename, renormalized, 'ascii')
-		end
-   end
+	    	renormalized = nn.SoftMax():forward(subpreds)
+	    	val = string.format("%.2f", perplexity)
+	        l = string.format("%.4f", loss)
+	    	-- filename = opt.savefolder .. i .. "-" .. tostring(tX:size(2)+1) .. "-" .. val .. "-" .. l .. ".txt"
+	     	-- torch.save(filename, renormalized, 'ascii')
+	    	filename = opt.savefolder .. i .. "-" .. tostring(tX:size(2)+1) .. "-" .. val .. "-" .. l .. ".h5"
+			local myFile = hdf5.open(filename, 'w')
+			myFile:write('preds', renormalized:float())
+			myFile:close()
+    	end
+	end
 
    return model
+end
+
+function nce(X, y, vX, vy, vs, dwin, nclasses, tX, ts)
+	--transform input so that lookuptable is position sensitive
+	if dwin==2 then
+		X:narrow(2,2,1):add(nclasses)
+		vX:narrow(2,2,1):add(nclasses)
+	end
+	
+	mlp = nn.Sequential()
+	--embeddings 
+	wordEmbeddings = nn.LookupTable(dwin*nclasses, opt.demb)
+    reshapeEmbeddings = nn.Reshape(dwin*opt.demb)
+    mlp:add(wordEmbeddings):add(reshapeEmbeddings)
+
+    --non-linearity
+    lin1Layer = nn.Linear(dwin*opt.demb, opt.dhid)
+    tanhLayer = nn.Tanh()
+	mlp:add(lin1Layer):add(tanhLayer)
+
+	--scoring and output embeddings
+    lin2Layer = nn.Linear(opt.dhid, nclasses)
+    mlp:add(lin2Layer)
+    --force distribution
+    mlp:add(nn.LogSoftMax())
+
+    criterion = nn.ClassNLLCriterion()
+    -- loss, count = criterion:forward(mlp:forward(X), y)
+    -- print(torch.exp(loss))
+    --print(mlp:forward(X))
+    if opt.gpuid >= 0 then
+      mlp:cuda()
+      criterion:cuda()
+    end
+
+
+    --TODO do NCE training separately
+    model = trainNN(mlp, criterion, X, y, vX, vy, vs, tX, ts)
+
+
+
 end
 
 function main() 
@@ -386,9 +417,9 @@ function main()
 	if opt.lm == "mle" then
 		MLE(tin, tout, vin, vout, vset, 0, dwin, nclasses)
 	elseif opt.lm == "laplace" then
-		MLE(tin, tout, vin, vout, vset, opt.alpha, dwin, nclasses)		
+		MLE(tin, tout, vin, vout, vset, opt.alpha, dwin, nclasses)	
 	elseif opt.lm == "wb" then
-		wittenBell(tin, tout, vin, vout, vset, dwin, nclasses)
+		wittenBell(tin, tout, vin, vout, vset, opt.alpha, dwin, nclasses)		
 	elseif opt.lm == "nn" then
 		nnlm(tin, tout, vin, vout, vset, dwin, nclasses, testin, testout)
 	end
