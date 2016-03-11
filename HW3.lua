@@ -323,6 +323,24 @@ function nce(X, y, vX, vy, vs, dwin, nclasses, tX, ts)
 
 end
 
+function wordprob(y, logs)
+	probs = {}
+	setDefault(probs, 0)
+	for row=1, y:size(1) do
+		probs[y[row]] = probs[y[row]] + 1
+	end
+	for row=1, y:size(1) do
+		probs[y[row]] = probs[y[row]]/y:size(1)
+		if logs then
+			if not probs[y[row]] == 0 then
+				probs[y[row]] = torch.log(probs[y[row]])
+			end
+		end
+	end
+
+	return probs
+end
+
 function main() 
 	-- Parse input params
 	opt = cmd:parse(arg)
