@@ -1,0 +1,10 @@
+This is the code for count-based and neural language models.
+There are two main-files: the HW3.lua file is for code that runs on the GPU and does not contain the count-based models. The Hw-no-cuda has all the models but no full support for the GPU. 
+
+the batch_learn.sh script can be called from the cluster in order to submit a job that trains the model and predicts scores on the test set.
+
+preprocess.py takes the training data and preprocesses it into a sparse format.
+
+csvformat.py takes the predictions and tranforms them into a kaggle-readable format. 
+
+
