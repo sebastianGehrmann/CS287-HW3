@@ -208,7 +208,7 @@ function nce(X, y, vX, vy, vs, dwin, nclasses, tX, ts)
 		losstotal = 0
 		--mini batches, yay
 		for t=1, X:size(1), opt.batchsize do
-			 xlua.progress(t, X:size(1))
+			--xlua.progress(t, X:size(1))
 
 			local inputs = torch.Tensor(opt.batchsize, X:size(2)):cuda()
 			local targets = torch.Tensor(opt.batchsize+opt.K):cuda()
