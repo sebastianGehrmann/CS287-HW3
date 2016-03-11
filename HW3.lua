@@ -323,6 +323,12 @@ function nce(X, y, vX, vy, vs, dwin, nclasses, tX, ts)
 
 end
 
+function setDefault (t, d)
+	--sets default value for table
+ 	local mt = {__index = function () return d end}
+    setmetatable(t, mt)
+end
+
 function wordprob(y, logs)
 	probs = {}
 	setDefault(probs, 0)
