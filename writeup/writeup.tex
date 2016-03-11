@@ -110,7 +110,7 @@ $$p(d=1|\textbf {x}, \textbf y) = \sigma(\log p(\textbf y|d=1, \textbf x) + \sig
 To generate a probabilistic sample, we introduce a noise variable $K$ that defines the prior probability of a sample being correct or incorrect. That is, $p(correct) = \frac{1}{1+K}$ or K wrong samples per correct sample.
 \citet{mnih2012fast} show, that the loss for this model can be described as 
 
-$$\mathcal{L}(\theta) = \sum_i \log \sigma(z_{w_i} - \log(K_{p_{ML}}(w_i)) + \sum_{k=1}^K \log(1-\sigma(K_{p_{ML}}(s_{i,k}))$$
+$$\mathcal{L}(\theta) = \sum_i \log \sigma(z_{w_i} - \log(Kp_{ML}(w_i)) + \sum_{k=1}^K \log(1-\sigma(Kp_{ML}(s_{i,k}))$$
 
 This still leaves some questions regarding an efficient implementation. Luckily, both $z_w$ and $\log p_{ML}(w)$ can be looked up in a table. Since the scores are now no longer normalized, in order to compute the whole distribution, we can use the softmax again or compute the scores for a subset of the data which we will do in the experiments. 
 
@@ -130,7 +130,7 @@ Baseline             & 50.00  & 50.00  \\ \midrule
 MLE                  & 9.42   & 16.63  \\
 Laplace $\alpha=0.1$ & 13.24  & 24.50  \\
 Laplace $\alpha=1$   & 20.88  & 35.32  \\
-Witten-Bell          & 16.41  & 17.36 
+Witten-Bell          & 9.46  & 15.26 
 \end{tabular}
 \caption{The results for count-based methods}
 \label{tab:count}

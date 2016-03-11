@@ -135,19 +135,28 @@ function MLE(X, y, vX, vy, vs, alpha, dwin, nclasses)
 	perplexity(preds, vy)
 end
 
-function wordprob(y)
+function wordprob(y, logs)
 	probs = {}
 	setDefault(probs, 0)
 	for row=1, y:size(1) do
 		probs[y[row]] = probs[y[row]] + 1
 	end
+	for row=1, y:size(1) do
+		probs[y[row]] = probs[y[row]]/y:size(1)
+		if logs then
+			if not probs[y[row]] == 0 then
+				probs[y[row]] = torch.log(probs[y[row]])
+			end
+		end
+	end
+
 	return probs
 end
 
 function wittenBell(X, y, vX, vy, vs, alpha, dwin, nclasses)
 	--p(w|c) = F(w,c)/F(c)
 	Fcw, Fc = maximumLikelihoodTable(X, y, alpha, dwin, nclasses)
-	Fw  = wordprob(y)
+	Fw  = wordprob(y, false)
 	local Fccw = {}
 	local Fcc = {}
 	if dwin==2 then
@@ -336,43 +345,172 @@ function trainNN(model, criterion, X, y, vX, vy, vs, tX, ts, lt)
 end
 
 function nce(X, y, vX, vy, vs, dwin, nclasses, tX, ts)
+	
+
 	--transform input so that lookuptable is position sensitive
 	if dwin==2 then
 		X:narrow(2,2,1):add(nclasses)
 		vX:narrow(2,2,1):add(nclasses)
 	end
 	
-	mlp = nn.Sequential()
+
+	--Normal NNLM!
+	local mlp = nn.Sequential()
 	--embeddings 
-	wordEmbeddings = nn.LookupTable(dwin*nclasses, opt.demb)
-    reshapeEmbeddings = nn.Reshape(dwin*opt.demb)
+	local wordEmbeddings = nn.LookupTable(dwin*nclasses, opt.demb)
+    local reshapeEmbeddings = nn.Reshape(dwin*opt.demb)
     mlp:add(wordEmbeddings):add(reshapeEmbeddings)
 
     --non-linearity
-    lin1Layer = nn.Linear(dwin*opt.demb, opt.dhid)
-    tanhLayer = nn.Tanh()
+    local lin1Layer = nn.Linear(dwin*opt.demb, opt.dhid)
+    local tanhLayer = nn.Tanh()
 	mlp:add(lin1Layer):add(tanhLayer)
 
-	--scoring and output embeddings
-    lin2Layer = nn.Linear(opt.dhid, nclasses)
-    mlp:add(lin2Layer)
+	--scoring and output embeddings / HERE IS THE SHARED STUFF WITH NCE
+    local linear = nn.Linear(opt.dhid, nclasses)
+    mlp:add(linear)
     --force distribution
     mlp:add(nn.LogSoftMax())
+    local criterion = nn.ClassNLLCriterion()
 
-    criterion = nn.ClassNLLCriterion()
-    -- loss, count = criterion:forward(mlp:forward(X), y)
-    -- print(torch.exp(loss))
-    --print(mlp:forward(X))
+    --NCE!!
+    local nce = nn.Sequential()
+    nce:add(wordEmbeddings):add(reshapeEmbeddings)
+    nce:add(lin1Layer):add(tanhLayer)
+    --HERE IS THE DIFFERENCE
+    local sublinear = nn.Linear(opt.dhid, opt.batchsize + opt.K)
+    nce:add(sublinear)
+
+
     if opt.gpuid >= 0 then
       mlp:cuda()
       criterion:cuda()
+      nce:cuda()
     end
 
+    ----TRAINING--------------------------------------------------------------------------
+	--for the log probs
+	wordprobs = wordprob(y, true)
+    print(X:size(1), "size of the test set")
+    --SGD after torch nn tutorial and https://github.com/torch/tutorials/blob/master/2_supervised/4_train.lua
+    for i=1, opt.epochs do
+		--shuffle data
+		shuffle = torch.randperm(X:size(1))
+		losstotal = 0
+		--mini batches, yay
+		for t=1, X:size(1), opt.batchsize do
+			 xlua.progress(t, X:size(1))
 
-    --TODO do NCE training separately
-    model = trainNN(mlp, criterion, X, y, vX, vy, vs, tX, ts)
+			local inputs = torch.Tensor(opt.batchsize, X:size(2))
+			local targets = torch.Tensor(opt.batchsize+opt.K)
+			local k = 1
+			--only compute update when there are enough samples left
+			if t+opt.batchsize+opt.K-1 > X:size(1) then break end
+
+			for i = t,t+opt.batchsize-1 do
+				inputs[k] = X[shuffle[i]]
+				targets[k] = y[shuffle[i]]
+				--subset sublinear
+				sublinear.weight[k] = linear.weight[y[i]]
+				sublinear.bias[k] = linear.bias[y[i]]
+				k = k+1
+			end
+			--subset sublinear
+			k=opt.batchsize
+			for i =t+opt.batchsize, t+opt.batchsize+opt.K-1 do
+				targets[k] = y[shuffle[i]]
+				sublinear.weight[k] = linear.weight[y[i]]
+				sublinear.bias[k] = linear.bias[y[i]]
+				k = k+1
+			end
+			
+			--zero out
+			mlp:zeroGradParameters()	
+			nce:zeroGradParameters()	
+			--predict and compute loss
+			preds = nce:forward(inputs)
+			--DIFFERENT HERE - TO DO
+			-- """
+			-- To do backprop you then need to create a vector 
+			-- deriv to feedback derivative for each true word 
+			-- and the samples at each input. You can do this 
+			-- by making a little scalar network that takes 
+			-- each of these values, subtracts the K log prob, 
+			-- applies a sigmoid, and then an NLL criterion. 
+			-- """
+			--HERE IS THIS APPROACH
+			predloss = torch.Tensor(opt.batchsize, 1+opt.K):fill(0)
+			for cpred=1, opt.batchsize do
+				--takes each of these values
+				--subtracts the k log prob
+				predloss[cpred][1] = preds[cpred][cpred] - opt.K * wordprobs[targets[cpred]]
+				
+				for csample=1, opt.K do
+					predloss[cpred][1+csample] = preds[cpred][opt.batchsize+csample] - opt.K * wordprobs[targets[opt.batchsize+csample]]			
+				end
+			end
+			--applies a sigmoid
+			predloss = nn.Sigmoid():forward(predloss)
+			--add in all the zeros again and construct targets
+			newTargets = torch.Tensor(opt.batchsize):fill(0)
+			predArray = torch.Tensor(opt.batchsize, opt.batchsize+opt.K)
+			for cpred=1, opt.batchsize do
+				for csample=1, opt.batchsize+opt.K do
+					if cpred == csample or csample > opt.batchsize then
+						if cpred == csample then
+							predArray[cpred][csample]=predloss[cpred][1]
+						else
+							predArray[cpred][csample]=predloss[cpred][1+csample-opt.batchsize]
+						end
+					else
+						predArray[cpred][csample]=0
+					end
+				end
+				newTargets[cpred] = cpred
+			end
+
+			loss = criterion:forward(predArray, newTargets) 
+			dLdpreds = criterion:backward(predArray, newTargets)
 
 
+			losstotal = losstotal + loss     
+			nce:backward(inputs, dLdpreds)
+			nce:updateParameters(opt.eta)
+
+			--COPY BACK THE WEIGHTS
+			k=1
+			for i = t, t + opt.batchsize + opt.K -1 do
+				linear.weight[y[i]] = sublinear.weight[k]
+        		linear.bias[y[i]] = sublinear.bias[k]
+        		k = k+1
+			end
+
+		end
+		--renorm
+		wordEmbeddings.weight:renorm(2,2,1)
+		print("\nepoch " .. i .. ", loss: " .. losstotal*opt.batchsize/X:size(1))
+
+		yhat = mlp:forward(vX)
+		loss, examples = criterion:forward(yhat,vy)
+		perplexity = torch.exp(loss)
+
+		print(perplexity, "Perplexity on validation set")
+		print(examples, "Number examples")
+
+		--compute perplexity on subset
+		predictions = torch.DoubleTensor(vy:size(1), vs:size(2)):fill(0)
+		for row=1,  vX:size(1) do
+			for p=1, vs:size(2) do
+				predictions[row][p] = yhat[row][vs[row][p]]
+			end
+		end	
+		predictions = nn.SoftMax():forward(predictions)
+		loss, examples = criterion:forward(predictions,vy)
+		perplexity = torch.exp(loss)
+
+		print(perplexity, "Perplexity on validation set")
+		print(examples, "Number examples")
+	end
 
 end
 
@@ -422,6 +560,8 @@ function main()
 		wittenBell(tin, tout, vin, vout, vset, opt.alpha, dwin, nclasses)		
 	elseif opt.lm == "nn" then
 		nnlm(tin, tout, vin, vout, vset, dwin, nclasses, testin, testout)
+	elseif opt.lm == "nce" then
+		nce(tin, tout, vin, vout, vset, dwin, nclasses, testin, testout)
 	end
 	-- Test.
 	-- for test we have to renormalize the scores of the given words
